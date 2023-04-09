@@ -6,7 +6,7 @@ To install the necessary dependencies, being in the root of the project, enter t
 pip install -r requirements.txt
 
 To run venv, enter one of the commands in the console while at the root of the project:
-- for linux and mac: source venv/bin/activate
+- for linux and mac: source bin/activate
 - for windows:
      - when working in cmd: venv\Scripts\activate.bat
      - when working in powershell: .\venv\Scripts\Activate.ps1
