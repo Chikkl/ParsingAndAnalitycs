@@ -6,6 +6,7 @@ import os
 
 
 def get_time(t = time.localtime()):
+    """Возвращает текущее время"""
     current_time = time.strftime("%H : %M : %S", t)
     return current_time
 
