@@ -4,14 +4,7 @@ import json
 import time
 import os
 from socket import error as SocketError
-import errno
-from parser import IParser
 
-
-# ЗАДАЧИ
-# Записывать какой-то параметр для того, чтобы не перезаписывать всё с нуля, а начинать с уже известного
-# Добавить проверку получаемых типов данных (?Вывод получаемого значения?)
-# Сделать перед циклом трай эксепт и 
 
 ua = UserAgent()
 
@@ -19,16 +12,15 @@ headers = {
     "useragent":ua.random,
 }
 
-class ParserRU(IParser):
+class ParserRU():
     """Класс представляет необходимый набор функционала для сбора данных через API с сайта hh.ru
     Каждая функция содержит краткое описание того, что она делает."""
-
-    def __init__(self) -> None:
-        self.PROFESSIONAL_ROLES = ['156', '160', '10', '12', '150', '25', '165', '34', '36', '73', '155', '96',
+    
+    PROFESSIONAL_ROLES = ['156', '160', '10', '12', '150', '25', '165', '34', '36', '73', '155', '96',
                               '164', '104', '157', '107', '112', '113', '148', '114', '116', '121', '124', '125', '126']
-        self.ALL_NEED_ROLES = ('156', '160', '10', '12', '150', '25', '165', '34', '36', '73', '155', '96',
+    ALL_NEED_ROLES = ('156', '160', '10', '12', '150', '25', '165', '34', '36', '73', '155', '96',
                               '164', '104', '157', '107', '112', '113', '148', '114', '116', '121', '124', '125', '126')
-        self.EXP = ["noExperience", "between1And3", "between3And6", "moreThan6"]
+    EXP = ["noExperience", "between1And3", "between3And6", "moreThan6"]
 
     @staticmethod
     def get_time(t = time.localtime()) -> str:
@@ -55,7 +47,7 @@ class ParserRU(IParser):
         return areas
 
     @staticmethod
-    def get_vacaniec_per_page(page:int = 0, area:str = '1', prof_role:str = '156', exp = ("noExperience", "between1And3", "between3And6", "moreThan6")) -> list:
+    def get_vacancies_per_page(page:int = 0, area:str = '1', prof_role:str = '156', exp = ("noExperience", "between1And3", "between3And6", "moreThan6")) -> list:
         """Функция для получения всех вакансий с определённой страницы"""
         params={
             "area":area,
@@ -73,7 +65,7 @@ class ParserRU(IParser):
         return data
 
     @staticmethod
-    def get_vacancie_with_specific_id(id:str, list_with_t:list, retry:int=5) -> list:
+    def get_vacancies_with_specific_id(id:str, list_with_t:list, retry:int=5) -> list:
         ''' Функция для получения определённой вакансии по её id'''
         try:
             req = requests.get(f'https://api.hh.ru/vacancies/{id}', headers=headers)
@@ -86,7 +78,7 @@ class ParserRU(IParser):
                             json.dump(list_with_t, f, indent=4, ensure_ascii=False)
 
                 time.sleep(3)
-                return ParserRU.get_vacancie_with_specific_id(id, retry=(retry - 1))
+                return ParserRU.get_vacancies_with_specific_id(id, retry=(retry - 1))
             else:
                  return
         else:
@@ -96,18 +88,18 @@ class ParserRU(IParser):
     def vacancies_saver(cls, page: int, area: list, role: str, list_with_trabl:list, dop_num:int = 0,) -> None:
         """Функция сохраняет полученные вакансии с определённой страницы в отдельный файл с расширением .json"""
         js_objs = []
-        js_obj = json.loads(ParserRU.get_vacaniec_per_page(page, area[0], role))
+        js_obj = json.loads(ParserRU.get_vacancies_per_page(page, area[0], role))
         for i in range(len(js_obj["items"])):
                         
                         id = js_obj["items"][i]["id"]
 
-                        req = ParserRU.get_vacancie_with_specific_id(id, list_with_trabl)
+                        req = ParserRU.get_vacancies_with_specific_id(id, list_with_trabl)
 
                         if req:
                             
                             obj = json.loads(req.content.decode())
 
-                            vacanies = {                                #Словарь хранит в себе список всех необходимых нам полей из получаемой вакансии
+                            vacancie = {                                #Словарь хранит в себе список всех необходимых нам полей из получаемой вакансии
                                 "id":obj["id"],
                                 "premium":obj["premium"],
                                 "name":obj["name"],
@@ -130,7 +122,7 @@ class ParserRU(IParser):
                                 "working_time_modes":obj["working_time_modes"]
                             }
 
-                            js_objs.append(vacanies)
+                            js_objs.append(vacancie)
                             req.close()
                             
                             time.sleep(0.6)
@@ -151,34 +143,43 @@ class ParserRU(IParser):
     @staticmethod
     def join_all_area():
         """Функция объединяет все полученные вакансии по каждой отдельной зоне в один файл."""
-        pass
+        all_vacancies = []
+        for fl in os.listdir('./areas/'):
+            with open('./areas/{}'.format(fl), encoding='utf8') as f:
+                jsonText = json.load(f)
+                for i in jsonText:
+                    all_vacancies.append(i)
+
+        with open("all_vacancies.json", "w", encoding='utf8') as fh:
+            json.dump(all_vacancies, fh, indent=4, ensure_ascii=False)
 
     @classmethod
     def start_parsing(cls):
         """Конечная функция. Координирует работу всех остальных функций. Для начала она получает список всех зон.
         После чего начинает перебирать все вакансии в этой зоне и обрабатывает их исходя из выполняемых условий."""
         print(f"Время начала сбора данных {cls.get_time()}")
-        areas = cls.get_areas()
+        areas = [["1", "Москва"], ["2", "Санкт-петербург"]]
+        areas.extend(cls.get_areas())
         list_with_trabl = []
 
-        total_vacaniec = 0                  # Переменная хранит в себе кол-во всех вакансий
+        total_vacancies = 0                  # Переменная хранит в себе кол-во всех вакансий
         area_list_id = 1                    # Переменная хранит в себе кол-во пройденных зон
 
         for area in areas:
-            vac = json.loads(cls.get_vacaniec_per_page(0, area[0], cls.ALL_NEED_ROLES))
-            count_vacaniec = vac['found']
+            vac = json.loads(cls.get_vacancies_per_page(0, area[0], cls.ALL_NEED_ROLES))
+            count_vacancies = vac['found']
             pages = vac['pages']
-            print('[{0}/{1}] Область: {2} ({3}) - Вакансий: {4}'.format(area_list_id, len(areas), area[1], area[0], count_vacaniec))
+            print('[{0}/{1}] Область: {2} ({3}) - Вакансий: {4}'.format(area_list_id, len(areas), area[1], area[0], count_vacancies))
                 
-            if count_vacaniec > 2000:                           # Если вакансий по запросу больше 2к, разбиваем этот запрос на подзапросы по специализации
+            if count_vacancies > 2000:                           # Если вакансий по запросу больше 2к, разбиваем этот запрос на подзапросы по специализации
                 dop_num = 0
                 for role in cls.PROFESSIONAL_ROLES:
-                    need_vac = json.loads(cls.get_vacaniec_per_page(0, area[0], role))
+                    need_vac = json.loads(cls.get_vacancies_per_page(0, area[0], role))
                     c_v= need_vac['found']
                     pag = need_vac['pages']
                     if c_v > 2000:                              # Если вакансий по запросу больше 2к, разбиваем этот запрос на подзапросы по опыту
                         for exp in cls.EXP:
-                            exp_vac = json.loads(cls.get_vacaniec_per_page(0, area[0], role, exp))
+                            exp_vac = json.loads(cls.get_vacancies_per_page(0, area[0], role, exp))
                             page_exp = exp_vac['pages']
                             for page in range(page_exp):
                                 cls.vacancies_saver(page, area, role, list_with_trabl, dop_num)
@@ -186,7 +187,6 @@ class ParserRU(IParser):
                                 dop_num+=1
                             time.sleep(0.5)
                     else:
-                        print('[{0}/{1}] Область: {2} role:{3} - Вакансий: {4}'.format(area_list_id, len(areas), area[1], role, c_v))
                         for page in range(pag):
                             cls.vacancies_saver(page, area, role, list_with_trabl, dop_num)
                             time.sleep(0.5)
@@ -200,11 +200,11 @@ class ParserRU(IParser):
                     time.sleep(0.5)
 
             area_list_id+=1
-            total_vacaniec+=count_vacaniec
+            total_vacancies+=count_vacancies
 
 
-            if count_vacaniec != 0:
-                print(f"Добавленно {count_vacaniec} вакансий")
+            if count_vacancies != 0:
+                print(f"Добавленно {count_vacancies} вакансий")
 
-        print(f"Вакансии собраны, всего {total_vacaniec}", end="\n\n")
+        print(f"Вакансии собраны, всего {total_vacancies}", end="\n\n")
 
