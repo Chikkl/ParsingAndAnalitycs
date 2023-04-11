@@ -1,12 +1,5 @@
+from parser import parsing, IParser
 
-import json
 
-nv = []
-def qq(num):
-    for i in range(100):
-        if i == 25:
-            print(i)
-            return 
-        print(i)
-
-print(qq(100))
+ru_parser:IParser = parsing.ParserRU()
+ru_parser.start_parsing()

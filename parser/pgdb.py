@@ -4,10 +4,7 @@ import json
 
 
 try:
-    connection = psycopg2.connect(dbname='psrsing', 
-                                  user='chikkl', 
-                                  password='a135fzpa',
-                                  host='localhost')
+    connection = True
 
     connection.autocommit = True
     
